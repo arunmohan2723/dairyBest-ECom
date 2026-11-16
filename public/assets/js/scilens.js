@@ -442,25 +442,59 @@ $(function () {
 
 
 
-    sidebar.on('change', '.list-brand input[type="checkbox"]', function () {
-        $('.list-type .item').removeClass('active');
-        $('.subcategory-item').removeClass('active');
-        if (this.checked) {
-            sidebar.find('.list-brand input[type="checkbox"]')
-                .not(this)
-                .prop('checked', false);
-        }
-    
-        const selectedBrandIds =
-            sidebar.find('.list-brand input:checked')
-                .not('[name="brand_all"]')
-                .map(function () {
-                    return this.name.split('_')[1];
-                }).get();
-    
+sidebar.on('change', '.list-brand input[type="checkbox"]', function () {
+
+    const isAllCheckbox = this.name === 'brand_all';
+
+    // If All is selected
+    if (isAllCheckbox && this.checked) {
+
+        // Uncheck individual brands
+        sidebar.find('.list-brand input[type="checkbox"]')
+            .not('[name="brand_all"]')
+            .prop('checked', false);
+
+        // Reset category and subcategory selections
+        sidebar.find('.list-type .item').removeClass('active');
+        sidebar.find('.subcategory-item').removeClass('active');
+
+        // Load all products
         fetchFilteredProducts();
-        fetchFilteredCategories(selectedBrandIds);
-    });
+
+        // Load all categories
+        fetchFilteredCategories([]);
+
+        return;
+    }
+
+    // If an individual brand is selected
+    if (!isAllCheckbox && this.checked) {
+
+        // Uncheck All
+        sidebar.find('[name="brand_all"]').prop('checked', false);
+
+        // Reset category selections
+        sidebar.find('.list-type .item').removeClass('active');
+        sidebar.find('.subcategory-item').removeClass('active');
+    }
+
+    const selectedBrandIds = sidebar.find('.list-brand input:checked')
+        .not('[name="brand_all"]')
+        .map(function () {
+            return this.name.split('_')[1];
+        })
+        .get();
+
+    // Automatically select All when no individual brand is selected
+    if (selectedBrandIds.length === 0) {
+        sidebar.find('[name="brand_all"]').prop('checked', true);
+    }
+
+    // Refresh products and categories
+    fetchFilteredProducts();
+    fetchFilteredCategories(selectedBrandIds);
+
+});
     
 
 });

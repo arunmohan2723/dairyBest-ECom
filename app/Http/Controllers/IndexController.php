@@ -214,38 +214,46 @@ class IndexController extends Controller
     }
 
 
-    public function filterCategories(Request $request)
-    {
-        logger()->info("inside..........................");
-        $brandIds = $request->brands ?? [];
     
-        // If no brand selected, return empty
-        if (empty($brandIds)) {
-            return '';
-        }
-    
+public function filterCategories(Request $request)
+{
+    $brandIds = $request->input('brands', []);
+
+    // If no brand is selected, return ALL categories
+    if (empty($brandIds)) {
+
+        $categories = Mcategory::with([
+            'subcategories' => function ($q) {
+                $q->withCount('products');
+            }
+        ])
+        ->withCount('products')
+        ->get();
+
+    } else {
+
+        // Return only categories belonging to selected brands
         $categories = Mcategory::whereHas('products', function ($q) use ($brandIds) {
                 $q->whereIn('brand_id', $brandIds);
             })
-            ->with(['subcategories' => function ($q) use ($brandIds) {
-                $q->whereHas('products', function ($sub) use ($brandIds) {
-                    $sub->whereIn('brand_id', $brandIds);
-                })
-                ->withCount(['products as products_count' => function ($sub) use ($brandIds) {
-                    $sub->whereIn('brand_id', $brandIds);
-                }]);
-            }])
+            ->with([
+                'subcategories' => function ($q) use ($brandIds) {
+                    $q->whereHas('products', function ($sub) use ($brandIds) {
+                        $sub->whereIn('brand_id', $brandIds);
+                    })
+                    ->withCount(['products as products_count' => function ($sub) use ($brandIds) {
+                        $sub->whereIn('brand_id', $brandIds);
+                    }]);
+                }
+            ])
             ->withCount(['products as products_count' => function ($q) use ($brandIds) {
                 $q->whereIn('brand_id', $brandIds);
             }])
             ->get();
-            foreach ($categories as $cat) {
-                logger()->info("Category: {$cat->name}, Products Count: {$cat->products_count}");
-                foreach ($cat->subcategories as $sub) {
-                    logger()->info("   Subcategory: {$sub->name}, Products Count: {$sub->products_count}");
-                }
-            }
-        return view('partials.category-sidebar', compact('categories'))->render();
     }
+
+    return view('partials.category-sidebar', compact('categories'))->render();
+}
+
     
 }
